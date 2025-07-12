@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TensorFlow.js Object Detection</title>
+</head>
+<body>
+    <video id="video" autoplay style="display: block;"></video>
+    <canvas id="canvas" style="position: absolute; top: 0; left: 0;"></canvas>
+
+    <!-- Include TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    
+    <script>
+    async function setupWebcam() {
+        const video = document.getElementById('video');
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: true
+        });
+        video.srcObject = stream;
+        await new Promise(resolve => video.onloadedmetadata = resolve);
+
+        const canvas = document.getElementById('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        video.play();
+    }
+
+    async function loadModel() {
+        const model = await cocoSsd.load();
+        return model;
+    }
+
+    async function detectObjects(model) {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        ctx.font = "16px Arial";
+
+        function drawBoundingBoxes(predictions) {
+            predictions.forEach(prediction => {
+                const [x, y, width, height] = prediction.bbox;
+                ctx.beginPath();
+                ctx.rect(x, y, width, height);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'black';
+                ctx.fillStyle = 'black';
+                ctx.stroke();
+                ctx.fillText(prediction.class, x, y > 10 ? y - 5 : y + 15);
+            });
+        }
+
+        async function processFrame() {
+            const predictions = await model.detect(video);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBoundingBoxes(predictions);
+            requestAnimationFrame(processFrame);
+        }
+
+        processFrame();
+    }
+
+    async function run() {
+        const model = await loadModel();
+        await setupWebcam();
+        detectObjects(model);
+    }
+
+    run();
+</script>
+</body>
+</html>
